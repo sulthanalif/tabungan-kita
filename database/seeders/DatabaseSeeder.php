@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         User::create([
-            'name' => 'Latifa Nuraliza Diva',
+            'name' => 'Latifa Nuraliza Difa',
             'email' => 'latifanuraliza07@gmail.com',
             'password' => 'password'
         ]);

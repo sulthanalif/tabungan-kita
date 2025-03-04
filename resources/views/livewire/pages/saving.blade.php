@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use App\Models\Saving;
 use App\Models\Category;
 use Livewire\Volt\Component;
@@ -8,6 +9,7 @@ use Livewire\Attributes\Title;
 use Masmerise\Toaster\Toastable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use App\Notifications\SavingNotification;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 new #[Title('Tabungan')] class extends Component {
@@ -49,7 +51,7 @@ new #[Title('Tabungan')] class extends Component {
 
         try {
             DB::beginTransaction();
-            Saving::create([
+            $saving = Saving::create([
                 'user_id' => auth()->id(),
                 'category_id' => $validated['category_id'],
                 'amount' => $validated['amount'],
@@ -60,6 +62,16 @@ new #[Title('Tabungan')] class extends Component {
             $this->resetVar();
             Flux::modal('showModal')->close();
             $this->success('Tabungan berhasil disimpan');
+            $users = User::all();
+
+            $savings = Saving::where('category_id', Category::where('name', 'Pemasukan')->first()->id)->sum('amount');
+            $expenses = Saving::where('category_id', Category::where('name', 'Pengeluaran')->first()->id)->sum('amount');
+
+            $saldo = $savings - $expenses;
+
+            foreach ($users as $user) {
+                $user->notify(new SavingNotification($saving, $saldo));
+            }
         } catch (\Throwable $th) {
             DB::rollBack();
             Log::debug("message: {$th->getMessage()}");
