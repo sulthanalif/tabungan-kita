@@ -58,11 +58,30 @@ new #[Title('Tabungan')] class extends Component {
             ]);
             DB::commit();
             $this->resetVar();
+            Flux::modal('showModal')->close();
             $this->success('Tabungan berhasil disimpan');
         } catch (\Throwable $th) {
             DB::rollBack();
             Log::debug("message: {$th->getMessage()}");
             $this->error($th->getMessage());
+            Flux::modal('showModal')->close();
+        }
+    }
+
+    public function delete(): void
+    {
+        try {
+            DB::beginTransaction();
+            Saving::find($this->id)->delete();
+            DB::commit();
+            $this->resetVar();
+            $this->success('Tabungan berhasil dihapus');
+            Flux::modal('confirmDelete')->close();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            $this->resetVar();
+            $this->error('Terjadi kesalahan');
+            Flux::modal('confirmDelete')->close();
         }
     }
 
