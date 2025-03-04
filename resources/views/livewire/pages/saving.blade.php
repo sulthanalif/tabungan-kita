@@ -180,13 +180,13 @@ new #[Title('Tabungan')] class extends Component {
                 <flux:heading size="lg">{{ $id ? 'Edit' : 'Tambah' }} Tabungan</flux:heading>
             </div>
 
-            <flux:input type="date" wire:model="date" label="Tanggal" />
-
             <flux:select label="Kategori" wire:model="category_id" placeholder="Pilih Kategori...">
                 @foreach ($categories as $category)
                     <option value="{{ $category->id }}">{{ $category->name }}</option>
                 @endforeach
             </flux:select>
+
+            <flux:input type="date" wire:model="date" label="Tanggal" />
 
             <flux:textarea label="Deskripsi" wire:model="description" placeholder="Masukan deskripsi..." />
 
