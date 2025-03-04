@@ -1,36 +1,37 @@
 <?php
 
-use Flux\Flux;
+use App\Models\Saving;
 use App\Models\Category;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Title;
-use Masmerise\Toaster\Toaster;
-use Illuminate\Validation\Rule;
 use Masmerise\Toaster\Toastable;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-new #[Title('Kategori')] class extends Component {
+new #[Title('Tabungan')] class extends Component {
     use WithPagination, Toastable;
 
     public string $search = '';
 
     //var
     public ?int $id = null;
-    public string $code = '';
-    public string $name = '';
+    public string $date = '';
+    public string $category_id = '';
+    public string $amount = '';
     public string $description = '';
 
     public function resetVar(): void
     {
-        $this->reset('id', 'code', 'name', 'description');
+        $this->reset('id', 'date', 'category_id', 'amount', 'description');
     }
 
     public function confirmDelete($id): void
     {
-        $category = Category::find($id);
+        $saving = Saving::find($id);
 
-        $this->id = $category->id;
+        $this->id = $saving->id;
 
         Flux::modal('confirmDelete')->show();
     }
@@ -38,56 +39,40 @@ new #[Title('Kategori')] class extends Component {
     public function save(): void
     {
         $validated = $this->validate([
-            'code' => ['required', 'string', 'max:255', Rule::unique(Category::class)->ignore($this->id)],
-            'name' => ['required', 'string', 'max:255'],
+            'date' => ['required', 'date'],
+            'category_id' => ['required', 'exists:categories,id'],
+            'amount' => ['required', 'numeric'],
             'description' => ['required', 'string', 'max:255'],
         ]);
 
+        // dd($validated);
+
         try {
             DB::beginTransaction();
-            if ($this->id) {
-                Category::find($this->id)->update($validated);
-                DB::commit();
-
-                $this->success('Kategori berhasil diubah');
-            } else {
-                Category::create($validated);
-                DB::commit();
-
-                $this->success('Kategori berhasil ditambahkan');
-            }
-        } catch (\Throwable $th) {
-            DB::rollBack();
-
-            $this->error('Terjadi kesalahan');
-        }
-
-        $this->resetVar();
-        Flux::modal('showModal')->close();
-    }
-
-    public function delete(): void
-    {
-        try {
-            DB::beginTransaction();
-            Category::find($this->id)->delete();
+            Saving::create([
+                'user_id' => auth()->id(),
+                'category_id' => $validated['category_id'],
+                'amount' => $validated['amount'],
+                'description' => $validated['description'],
+                'date' => $validated['date'],
+            ]);
             DB::commit();
             $this->resetVar();
-            $this->success('Kategori berhasil dihapus');
-            Flux::modal('confirmDelete')->close();
+            $this->success('Tabungan berhasil disimpan');
         } catch (\Throwable $th) {
             DB::rollBack();
-            $this->resetVar();
-            $this->error('Terjadi kesalahan');
-            Flux::modal('confirmDelete')->close();
+            Log::debug("message: {$th->getMessage()}");
+            $this->error($th->getMessage());
         }
     }
 
     public function datas(): LengthAwarePaginator
     {
-        return Category::query()
-            ->where('name', 'like', "%{$this->search}%")
-            ->orWhere('code', 'like', "%{$this->search}%")
+        return Saving::query()
+            ->with('user', 'category')
+            ->whereHas('user', function ($query) {
+                $query->where('name', 'like', "%{$this->search}%");
+            })
             ->latest()
             ->paginate(5);
     }
@@ -95,7 +80,8 @@ new #[Title('Kategori')] class extends Component {
     public function with(): array
     {
         return [
-            'categories' => $this->datas(),
+            'savings' => $this->datas(),
+            'categories' => Category::all(),
         ];
     }
 }; ?>
@@ -104,9 +90,9 @@ new #[Title('Kategori')] class extends Component {
     <div class="flex-1 max-md:pt-6 self-stretch">
         <div class="flex justify-between items-center">
             <div>
-                <flux:heading size="xl" level="1">Kategori</flux:heading>
+                <flux:heading size="xl" level="1">Tabungan</flux:heading>
 
-                <flux:subheading size="lg" class="mb-6">{{ __('Kategori untuk tabungan') }}</flux:subheading>
+                <flux:subheading size="lg" class="mb-6">{{ __('Ini adalah tabungan kita') }}</flux:subheading>
             </div>
             <div>
                 <flux:modal.trigger name="showModal">
@@ -122,61 +108,74 @@ new #[Title('Kategori')] class extends Component {
             <table class="table-auto w-full border-collapse">
                 <thead class="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                        <th class="px-6 py-2 text-left whitespace-nowrap">Kode</th>
-                        <th class="px-6 py-2 text-left whitespace-nowrap">Nama</th>
+                        <th class="px-6 py-2 text-left whitespace-nowrap">Tanggal</th>
+                        <th class="px-6 py-2 text-left whitespace-nowrap">Kategori</th>
                         <th class="px-6 py-2 text-left min-w-[200px]">Deskripsi</th>
-                        <th class="px-6 py-2 text-left whitespace-nowrap">Dibuat Pada</th>
+                        <th class="px-6 py-2 text-left whitespace-nowrap">Jumlah</th>
+                        <th class="px-6 py-2 text-left whitespace-nowrap">Dibuat Oleh</th>
                         <th class="px-6 py-2 text-center whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
-                    @forelse ($categories as $category)
+                    @forelse ($savings as $saving)
                         <tr class="bg-white dark:bg-gray-800">
                             <td class="px-6 py-4 text-sm whitespace-nowrap">
-                                {{ $category->code }}
+                                {{ \Carbon\Carbon::parse($saving->date)->locale('id_ID')->isoFormat('D MMMM YYYY') }}
                             </td>
                             <td class="px-6 py-4 text-sm whitespace-nowrap">
-                                {{ $category->name }}
+                                {{ $saving->category->name }}
                             </td>
                             <td class="px-6 py-4 text-sm break-words">
-                                {{ $category->description }}
+                                {{ $saving->description }}
                             </td>
                             <td class="px-6 py-4 text-sm whitespace-nowrap">
-                                {{ $category->created_at->format('d-m-Y H:i') }}
+                                Rp.{{ number_format($saving->amount, 0, ',', '.') }}
+                            </td>
+                            <td class="px-6 py-4 text-sm whitespace-nowrap">
+                                {{ $saving->user->name }}
                             </td>
                             <td class="px-6 py-4 text-center">
                                 <flux:button variant="danger" icon="trash"
-                                    wire:click="confirmDelete({{ $category->id }})">
+                                    wire:click="confirmDelete({{ $saving->id }})">
                                 </flux:button>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td class="px-6 py-4 text-center" colspan="5">
-                                Tidak ada kategori
+                            <td class="px-6 py-4 text-center" colspan="6">
+                                Tidak ada tabungan
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
             <div class="mt-4">
-                {{ $categories->links() }}
+                {{ $savings->links() }}
             </div>
         </div>
     </div>
 
-
     <flux:modal name="showModal" class="md:w-96">
         <div class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ $id ? 'Edit' : 'Tambah' }} Kategori</flux:heading>
+                <flux:heading size="lg">{{ $id ? 'Edit' : 'Tambah' }} Tabungan</flux:heading>
             </div>
 
-            <flux:input label="Kode" wire:model="code" placeholder="Masukan Kode" />
+            <flux:input type="date" wire:model="date" label="Tanggal" />
 
-            <flux:input label="Nama" wire:model="name" placeholder="Masukan Nama" />
+            <flux:select label="Kategori" wire:model="category_id" placeholder="Pilih Kategori...">
+                @foreach ($categories as $category)
+                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                @endforeach
+            </flux:select>
 
             <flux:textarea label="Deskripsi" wire:model="description" placeholder="Masukan deskripsi..." />
+
+            <flux:input.group>
+                <flux:input.group.prefix>Rp</flux:input.group.prefix>
+
+                <flux:input type='number' wire:model="amount" placeholder="Maukan Jumlah Uang" />
+            </flux:input.group>
 
             <div class="flex">
                 <flux:spacer />

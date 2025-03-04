@@ -15,20 +15,11 @@
                 <flux:navlist.group heading="Menu" class="grid">
                     <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
                     <flux:navlist.item icon="tag" :href="route('category')" :current="request()->routeIs('category')" wire:navigate>{{ __('Kategori') }}</flux:navlist.item>
+                    <flux:navlist.item icon="server-stack" :href="route('saving')" :current="request()->routeIs('saving')" wire:navigate>{{ __('Tabungan') }}</flux:navlist.item>
                 </flux:navlist.group>
             </flux:navlist>
 
             <flux:spacer />
-
-            <flux:navlist variant="outline">
-                <flux:navlist.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                {{ __('Repository') }}
-                </flux:navlist.item>
-
-                <flux:navlist.item icon="book-open-text" href="https://laravel.com/docs/starter-kits" target="_blank">
-                {{ __('Documentation') }}
-                </flux:navlist.item>
-            </flux:navlist>
 
             <!-- Desktop User Menu -->
             <flux:dropdown position="bottom" align="start">
@@ -127,9 +118,9 @@
         </flux:header>
 
         {{ $slot }}
-        <x-toaster-hub />
 
         @fluxScripts
+        <x-toaster-hub />
 
     </body>
 </html>

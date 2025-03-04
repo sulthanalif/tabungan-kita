@@ -11,6 +11,8 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     Volt::route('dashboard', 'dashboard')->name('dashboard');
     Volt::route('category', 'pages.category')->name('category');
+    Volt::route('saving', 'pages.saving')->name('saving');
+
 
     Route::redirect('settings', 'settings/profile');
 
