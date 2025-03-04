@@ -27,5 +27,15 @@ class DatabaseSeeder extends Seeder
             'password' => 'password'
         ]);
 
+
+        $categories = [
+            ['code' => 001, 'name' => 'Pemasukan', 'description' => 'Pemasukan'],
+            ['code' => 002, 'name' => 'Pengeluaran', 'description' => 'Pengeluaran'],
+        ];
+
+        foreach ($categories as $category) {
+            \App\Models\Category::create($category);
+        }
+
     }
 }
